@@ -1,237 +1,210 @@
-# Airbnb
-Properties TablePurpose:
+# TRPS Guesty API - Booking Management
 
-The properties table stores detailed information about a property including address, amenities, images, and nested meta info — all in a single table using PostgreSQL’s JSONB types to reduce table fragmentation.
+This document provides implementation details for the **Booking History API** and **Cancel Booking API** in the TRPS Guesty system.
 
-#### 📌 Basic Info
+---
 
-Column Name Type Description  
-
-```js
-+---------------------------+
-|        properties         |
-+---------------------------+
-| property_code : VARCHAR  |
-| property_type : VARCHAR  |
-| place_type : VARCHAR     |
-| name : VARCHAR           |
-| check_in_time : TIME     |
-| check_out_time : TIME    |
-| supported_booking_type   |
-| property_details : JSONB |
-|   └─ max_guests          |
-|   └─ total_bedrooms      |
-|   └─ bathrooms           |
-|   └─ beds                |
-| address : JSONB          |
-|   └─ address.location    |
-|   └─ fullAddress         |
-|   └─ city.name           |
-|   └─ country.name        |
-| amenity_groups : JSONB   |
-|   └─ groupName           |
-|   └─ amenities[]         |
-| descriptions : JSONB     |
-|   └─ id, title           |
-|   └─ paragraphs[]        |
-| general_descriptions     |
-|   └─ id, title           |
-|   └─ paragraphs[]        |
-| images : JSONB           |
-|   └─ id, caption, url    |
-| highlighting_features    |
-|   └─ id, name            |
-| contact : JSONB          |
-|   └─ phone, email        |
-+---------------------------+
+## Base URL
 
 ```
-
-#### 🧩 JSONB Columns (Expandable Data)
-
-
-
-#### 🏡 property_details (JSONB)
-
-#### 
-
-- max_guests – Maximum number of guests
-
-- total_bedrooms – Number of bedrooms
-
-- bathrooms – Number of bathrooms
-
-- beds – Number of beds
-
-Example:
-
-```js
-{
-  "max_guests": 2,
-  "total_bedrooms": 1,
-  "bathrooms": 1,
-  "beds": 1
-}
-
+https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1
 ```
 
-#### 📍 address (JSONB)
+---
 
-- fullAddress – Human-readable address
+## Authentication
+Both APIs require **Bearer Token** authentication.
 
-- location – GPS coordinates (Point type)
+**Authorization Header:**
+```
+Authorization: Bearer <JWT_TOKEN>
+```
+Replace `<JWT_TOKEN>` with a valid token.
 
-- city.name – City name
+---
 
-- city.location – City's coordinates
+## 1. Booking History API
 
-- country.name – Country name
+### Endpoint
+```
+GET /booking/history
+```
 
-- country.code – ISO country code
+### Description
+Retrieves the booking history for a given `tenant_id`, `guesty_id`, and `user_email`.
 
-Example:
+### Request Parameters
+| Name         | Type   | Required | Description                              |
+|--------------|--------|----------|------------------------------------------|
+| tenant_id    | string | No      | Tenant ID associated with the user       |
+| guesty_id    | string | No      | Guesty ID associated with the user       |
+| user_email   | string | No      | Email address of the user (URL-encoded)  |
 
+- **Note:** All three parameters are required for best results. `user_email` must be URL-encoded (e.g., `sohanur@scalebridger.com`).
+
+---
+
+### Example Request (cURL)
+```bash
+curl --location 'https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1/booking/history?tenant_id=198&guesty_id=6899bd079ed800079b71d276&user_email=sohanur%40scalebridger.com' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <JWT_TOKEN>'
+```
+
+### Example Request (JavaScript fetch)
 ```js
+const response = await fetch('https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1/booking/history?tenant_id=198&guesty_id=6899bd079ed800079b71d276&user_email=sohanur%40scalebridger.com', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <JWT_TOKEN>'
+  }
+});
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+### Example Response
+```json
 {
-  "address": {
-    "location": { "type": "Point", "coordinates": [-86.89721, 16.10199] },
-    "fullAddress": "Jerico, Isla de Utila, Honduras",
-    "city": {
-      "name": "Isla de Utila",
-      "location": { "type": "Point", "coordinates": [-86.94017, 16.09409] }
-    },
-    "country": { "name": "Honduras", "code": "HN" }
+  "success": true,
+  "message": "Booking history retrieved successfully",
+  "data": {
+    "bookings": [
+      {
+        "_id": "689c56af66b31b128a9e869f",
+        "booking_id": "BKTRPS20250813151106ERp8u",
+        "guest_name": "Test booking (Sohan)",
+        "check_in_date": "2025-10-05T00:00:00.000Z",
+        "check_out_date": "2025-10-08T00:00:00.000Z",
+        "total_amount": 1125.99,
+        "currency": "AED",
+        "booking_status": "pending",
+        "booking_payment_status": "pending"
+      }
+    ],
+    "total": 3,
+    "totalPages": 1,
+    "currentPage": 1
+  },
+  "user_context": {
+    "user_id": "198",
+    "guesty_id": "6899bd079ed800079b71d276",
+    "email": "sohanur@scalebridger.com"
   }
 }
-
 ```
 
-#### 🌿 amenity_groups (JSONB)
+---
 
-An array of grouped amenities.
+## 2. Cancel Booking API
 
-- groupName – E.g., General
-
-- amenities[] – List of amenities with id and name
-
-Example:
-
-```js
-[
-  {
-    "id": "general",
-    "groupName": "General",
-    "amenities": [
-      { "id": "air-conditioning", "name": "Air conditioning" },
-      { "id": "garden", "name": "Garden" }
-    ]
-  }
-]
-
+### Endpoint
+```
+POST /booking/cancel-booking
 ```
 
-#### 📝 descriptions (JSONB)
+### Description
+Cancels a booking using the `reservation_id`.
 
-An array of content blocks (sectioned description).
+### Request Body
+| Name           | Type   | Required | Description                     |
+| -------------- | ------ | -------- | ------------------------------- |
+| reservation_id | string | Yes      | Unique reservation ID to cancel |
 
-- id – e.g., location, services
+---
 
-- title – Section title
-
-- paragraphs[] – List of text paragraphs
-
-Example:
-
-```js
-[
-  {
-    "id": "location",
-    "title": "Location",
-    "paragraphs": [
-      "A very nice option for those who like to be on the move!",
-      "Places nearby: Chepes Beach."
-    ]
-  }
-]
-
+### Example Request (cURL)
+```bash
+curl --location 'https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1/booking/cancel-booking' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <JWT_TOKEN>' \
+--data '{
+    "reservation_id": "689c56ada5b3550011065aa8"
+}'
 ```
 
-#### 📃 general_descriptions (JSONB)
-
-- id, title
-
-- paragraphs[] – List of general description paragraphs
-
-Example:
-
+### Example Request (JavaScript fetch)
 ```js
+const response = await fetch('https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1/booking/cancel-booking', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <JWT_TOKEN>'
+  },
+  body: JSON.stringify({ reservation_id: '689c56ada5b3550011065aa8' })
+});
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+### Example Response
+```json
 {
-  "id": "general",
-  "title": "General",
-  "paragraphs": [
-    "Free Wi-Fi and parking available.",
-    "Pet-friendly, with BBQ area and laundry."
-  ]
-}
-
-```
-
-#### 🖼 images (JSONB)
-
-An array of image metadata.
-
-- id – Image ID
-
-- caption – Image caption
-
-- url – Full image URL
-
-- source – E.g., RATE_HAWK
-
-Example:
-
-```js
-[
-  {
-    "id": "1",
-    "caption": "Front view",
-    "url": "https://cdn.example.com/image.jpg",
-    "source": "RATE_HAWK"
+  "success": true,
+  "message": "Booking cancelled successfully",
+  "data": {
+    "reservation_id": "689c56ada5b3550011065aa8",
+    "status": "cancelled"
   }
-]
-
-```
-
-#### 🌟 highlighting_features (JSONB)
-
-A list of highlighted features shown to guests.
-
-- id
-
-- name – E.g., Free Wi-Fi, Free Parking
-
-Example:
-
-```js
-[
-  { "id": "free-wifi", "name": "Free Wi-Fi" },
-  { "id": "free-parking", "name": "Free Parking" }
-]
-
-```
-
-#### 📞 contact (JSONB)
-
-- phone
-
-- email
-
-Example:
-
-```js
-{
-  "phone": "+1234567890",
-  "email": "required@acbontroller.com"
 }
+```
 
+---
+
+## Notes
+
+- **Booking Status Values:**
+    - `pending` – Awaiting confirmation or payment
+    - `confirmed` – Booking is confirmed
+    - `cancelled` – Booking has been cancelled
+
+- **Payment Status Values:**
+    - `pending` – Payment not completed
+    - `paid` – Payment successful
+    - `failed` – Payment failed
+
+- Make sure `user_email` in the **Booking History API** is URL-encoded.
+
+---
+
+## Changelog
+
+- **2025-08-13:** Added `booking/history` and `booking/cancel-booking` endpoints.
+
+---
+
+## Quick Reference: JavaScript fetch() Usage
+
+### Booking History Example
+```js
+const url = 'https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1/booking/history?tenant_id=198&guesty_id=6899bd079ed800079b71d276&user_email=sohanur%40scalebridger.com';
+const response = await fetch(url, {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <JWT_TOKEN>'
+  }
+});
+const data = await response.json();
+console.log(data);
+```
+
+### Cancel Booking Example
+```js
+const url = 'https://trps-guesty-api-etbyfbdvcvabcgfp.eastasia-01.azurewebsites.net/api/v1/booking/cancel-booking';
+const response = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <JWT_TOKEN>'
+  },
+  body: JSON.stringify({ reservation_id: '689c56ada5b3550011065aa8' })
+});
+const data = await response.json();
+console.log(data);
 ```
